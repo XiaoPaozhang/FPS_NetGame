@@ -19,7 +19,10 @@ public class RoomUI : MonoBehaviour, IInRoomCallbacks
     roomPrefab = transform.Find("bg/roomItem").gameObject;
     roomList = new List<RoomItem>();
     transform.Find("bg/title/closeBtn").GetComponent<Button>().onClick.AddListener(OnCloseBtn);
-    transform.Find("bg/startBtn").GetComponent<Button>().onClick.AddListener(OnStartBtn);
+    startTf = transform.Find("bg/startBtn");
+    startTf.GetComponent<Button>().onClick.AddListener(OnStartBtn);
+
+    PhotonNetwork.AutomaticallySyncScene = true;//执行 PhotonNetwork.LoadLevel("game") 加载场景的时候,其他玩家也跳转相同场景
   }
 
   void Start()
@@ -52,7 +55,8 @@ public class RoomUI : MonoBehaviour, IInRoomCallbacks
 
   private void OnStartBtn()
   {
-    Debug.Log("开始游戏");
+    //加载场景 让房间里的玩家也加载场景
+    PhotonNetwork.LoadLevel("game");
   }
 
   //生成玩家
@@ -63,6 +67,13 @@ public class RoomUI : MonoBehaviour, IInRoomCallbacks
     RoomItem item = obj.AddComponent<RoomItem>();
     item.ownerId = player.ActorNumber;
     roomList.Add(item);
+
+    if (player.CustomProperties.TryGetValue("isReady", out object val))
+    {
+      item.isReady = (bool)val;
+    }
+
+    CheckAllPlayerReady();
   }
 
   //删除离开房间的玩家
@@ -98,7 +109,32 @@ public class RoomUI : MonoBehaviour, IInRoomCallbacks
   //房间内玩家属性更新
   public void OnPlayerPropertiesUpdate(Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps)
   {
+    RoomItem item = roomList.Find((_item) => _item.ownerId == targetPlayer.ActorNumber);
+    if (item != null)
+    {
+      item.isReady = (bool)changedProps["isReady"];
+      item.ChangeReady(item.isReady);
+    }
 
+    CheckAllPlayerReady();
+  }
+
+  private void CheckAllPlayerReady()
+  {
+    //如果是主机玩家,判断所有玩家都准备好了，则激活开始按钮
+    if (PhotonNetwork.IsMasterClient)
+    {
+      bool isAllReady = true;
+      for (int i = 0; i < roomList.Count; i++)
+      {
+        if (!roomList[i].isReady)
+        {
+          isAllReady = false;
+          break;
+        }
+      }
+      startTf.gameObject.SetActive(isAllReady);//开始按钮激活
+    }
   }
 
   //房间内玩家自定义事件
