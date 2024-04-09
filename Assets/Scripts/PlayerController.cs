@@ -10,7 +10,7 @@ public class PlayerController : MonoBehaviour
   // 数值
   public int CurHp = 10;
   public int MaxHp = 10;
-  public float MoveSpeed = 3.5f;
+  public float MoveSpeed = 20f;
   public float H; // 水平值
   public float V; // 垂直值
   public Vector3 dir; // 方向
@@ -21,7 +21,8 @@ public class PlayerController : MonoBehaviour
   public float scroll; // 滚轮值
   public float angle_X; // 角色的角度X
   public float angle_Y; // 角色的角度Y
-  public Quaternion camRotaion; // 相机的旋转
+  public Quaternion camRotation; // 相机的旋转
+  public Gun gun; // 武器
 
   void Start()
   {
@@ -29,6 +30,7 @@ public class PlayerController : MonoBehaviour
     angle_Y = transform.eulerAngles.y;
     ani = GetComponent<Animator>();
     body = GetComponent<Rigidbody>();
+    gun = GetComponentInChildren<Gun>();
     camTf = Camera.main.transform;
   }
 
@@ -36,6 +38,7 @@ public class PlayerController : MonoBehaviour
   {
     UpdatePosition();
     UpDateRotation();
+    InputCtrl();
   }
 
   void LateUpdate()
@@ -63,14 +66,12 @@ public class PlayerController : MonoBehaviour
     angle_X = angle_X - mouse_Y;
     angle_Y = angle_Y + mouse_X;
 
-    angle_X = ClamAngle(angle_X, -90, 90); // 限制角度在-90到90之间
+    angle_X = ClamAngle(angle_X, -60, 60); // 限制角度在-60到90之间
     angle_Y = ClamAngle(angle_Y, -360, 360); // 限制角度在-360到360之间
 
-    camRotaion = Quaternion.Euler(angle_X, angle_Y, 0); // 角色的旋转
+    camRotation = Quaternion.Euler(angle_X, angle_Y, 0); // 角色的旋转
 
-    camTf.rotation = camRotaion; // 相机的旋转
-
-    camTf.position = transform.position + offset; // 跟随角色的位置
+    camTf.rotation = camRotation; // 相机的旋转
 
     offset.z += scroll; // 滚轮控制相机的高度
 
@@ -80,12 +81,29 @@ public class PlayerController : MonoBehaviour
     transform.eulerAngles = new Vector3(0, camTf.eulerAngles.y, 0); // 角色的角度
   }
 
+  //角色操作
+  public void InputCtrl()
+  {
+    if (Input.GetMouseButtonDown(0))
+    {
+      //判断子弹个数
+      if (gun.BulletCount > 0)
+      {
+        gun.BulletCount--;
+
+        //播放枪口动画
+        ani.Play("Fire", 1, 0);
+        //发射子弹
+        gun.Attack();
+      }
+    }
+  }
   public float ClamAngle(float val, float min, float max)
   {
     if (val > 360)
       val -= 360;
 
-    if (val < 0)
+    if (val < -360)
       val += 360;
 
     return Mathf.Clamp(val, min, max);
@@ -96,7 +114,7 @@ public class PlayerController : MonoBehaviour
     if (ani != null)
     {
       //设置头部的位置
-      ani.SetBoneLocalRotation(HumanBodyBones.Chest, camRotaion * Quaternion.Euler(angle_X, 0, 0));
+      ani.SetBoneLocalRotation(HumanBodyBones.Chest, Quaternion.Euler(angle_X, 0, 0));
     }
   }
 }

@@ -6242,7 +6242,7 @@ MonoBehaviour:
   camTf: {fileID: 0}
   CurHp: 10
   MaxHp: 10
-  MoveSpeed: 3.5
+  MoveSpeed: 20
   H: 0
   V: 0
   dir: {x: 0, y: 0, z: 0}
@@ -6252,7 +6252,8 @@ MonoBehaviour:
   scroll: 0
   angle_X: 0
   angle_Y: 0
-  camRotaion: {x: 0, y: 0, z: 0, w: 0}
+  camRotation: {x: 0, y: 0, z: 0, w: 0}
+  gun: {fileID: 0}
 --- !u!1 &4937666007857281578
 GameObject:
   m_ObjectHideFlags: 0
@@ -7523,6 +7524,28 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 592e928ce3d3f554f81db860fd9a190b, type: 3}
+--- !u!1 &4936616804993635971 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1266391295367128, guid: 592e928ce3d3f554f81db860fd9a190b, type: 3}
+  m_PrefabInstance: {fileID: 4937666007265182043}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &4579323330546823627
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4936616804993635971}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b022d3d0a3ca0e740871c87cf0bab42f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  BulletCount: 10
+  bulletPrefab: {fileID: 3550838570483772475, guid: bc56f1e62d9d4e5468b0810a3aa68adc, type: 3}
+  casingPrefab: {fileID: 2094399774589732004, guid: f936e30ecf4dad649bec0aa70af9104c, type: 3}
+  bulletTf: {fileID: 4937666008128494459}
+  casingTF: {fileID: 4937666007248269763}
 --- !u!4 &4942249604864967713 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4636391557989754, guid: 592e928ce3d3f554f81db860fd9a190b, type: 3}
