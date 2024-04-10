@@ -1,18 +1,25 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class FightUI : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
+  void Start()
+  {
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+  }
+
+  //更新子弹个数显示
+  public void UpdateBulletCount(int count)
+  {
+    transform.Find("bullet/Text").GetComponent<Text>().text = count.ToString();
+  }
+
+  //更新血量显示
+  public void UpdateHp(float cur, float max)
+  {
+    transform.Find("hp/fill").GetComponent<Image>().fillAmount = cur / max;
+    transform.Find("hp/Text").GetComponent<Text>().text = cur + "/" + max;
+  }
 }

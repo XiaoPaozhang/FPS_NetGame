@@ -1,6 +1,8 @@
+using System.Collections;
+using Photon.Pun;
 using UnityEngine;
 
-public class PlayerController : MonoBehaviour
+public class PlayerController : MonoBehaviourPun, IPunObservable
 {
   // 组件
   public Animator ani;
@@ -10,7 +12,7 @@ public class PlayerController : MonoBehaviour
   // 数值
   public int CurHp = 10;
   public int MaxHp = 10;
-  public float MoveSpeed = 20f;
+  public float MoveSpeed = 10f;
   public float H; // 水平值
   public float V; // 垂直值
   public Vector3 dir; // 方向
@@ -23,6 +25,11 @@ public class PlayerController : MonoBehaviour
   public float angle_Y; // 角色的角度Y
   public Quaternion camRotation; // 相机的旋转
   public Gun gun; // 武器
+  public AudioClip reloadClip; // 填充子弹音效
+  public AudioClip shootClip; // 射击音效
+  public bool isDead; // 是否死亡
+  public Vector3 currentPos; // 当前位置
+  public Quaternion currentRotation; // 当前旋转
 
   void Start()
   {
@@ -32,19 +39,44 @@ public class PlayerController : MonoBehaviour
     body = GetComponent<Rigidbody>();
     gun = GetComponentInChildren<Gun>();
     camTf = Camera.main.transform;
+    currentPos = transform.position;
+    currentRotation = transform.rotation;
+
+    if (photonView.IsMine)
+    {
+      Game.uIManager.GetUI<FightUI>("FightUI").UpdateHp(CurHp, MaxHp);
+    }
   }
 
   void Update()
   {
-    UpdatePosition();
-    UpDateRotation();
-    InputCtrl();
+    //判断是否是本地玩家
+    if (photonView.IsMine)
+    {
+      if (isDead) return;
+
+      UpdatePosition();
+      UpDateRotation();
+      InputCtrl();
+    }
+    else
+    {
+      UpdateLogic();
+    }
+  }
+
+  //其他角色更新发送过来的数据(位置 旋转)
+  public void UpdateLogic()
+  {
+    transform.position = Vector3.Lerp(transform.position, currentPos, Time.deltaTime * MoveSpeed);
+    transform.rotation = Quaternion.Slerp(transform.rotation, currentRotation, Time.deltaTime);
   }
 
   void LateUpdate()
   {
     ani.SetFloat("Horizontal", H);
     ani.SetFloat("Vertical", V);
+    ani.SetBool("isDie", isDead);
   }
 
   //更新位置
@@ -84,20 +116,94 @@ public class PlayerController : MonoBehaviour
   //角色操作
   public void InputCtrl()
   {
+
+    //如果正在播放填充子弹动画，则不能再射击
+    if (ani.GetCurrentAnimatorStateInfo(1).IsName("Reload"))
+      return;
+
+    //按下鼠标左键，射击
     if (Input.GetMouseButtonDown(0))
     {
+
       //判断子弹个数
       if (gun.BulletCount > 0)
       {
+
         gun.BulletCount--;
+        Game.uIManager.GetUI<FightUI>("FightUI").UpdateBulletCount(gun.BulletCount);
 
         //播放枪口动画
         ani.Play("Fire", 1, 0);
         //发射子弹
-        gun.Attack();
+        StartCoroutine(AttackCo());
       }
     }
+
+    //按下R键，填充子弹
+    if (Input.GetKeyDown(KeyCode.R))
+    {
+      //填充子弹
+      AudioSource.PlayClipAtPoint(reloadClip, transform.position);//播放填充子弹音效
+      ani.Play("Reload");
+      gun.BulletCount = 10;
+      Game.uIManager.GetUI<FightUI>("FightUI").UpdateBulletCount(gun.BulletCount);
+    }
   }
+
+  //攻击协程
+  IEnumerator AttackCo()
+  {
+    //延迟0.1秒播放攻击动画
+    yield return new WaitForSeconds(0.1f);
+
+    //播放射击音效
+    AudioSource.PlayClipAtPoint(shootClip, transform.position);
+
+    //射线检测 鼠标中心点发送射线
+    Ray ray = Camera.main.ScreenPointToRay(new Vector3(Screen.width * 0.5f, Screen.height * 0.5f, Input.mousePosition.z));
+
+    if (Physics.Raycast(
+      ray,
+      out RaycastHit hit,
+      10000,
+      LayerMask.GetMask("Player")))
+    {
+      Debug.Log($"射到角色;{hit.transform.name}");
+      hit.transform.GetComponent<PlayerController>().GetHit(1);
+    }
+
+    photonView.RPC("AttackRpc", RpcTarget.All);//所有玩家执行AttackRpc函数
+  }
+
+  [PunRPC]
+  public void AttackRpc()
+  {
+    gun.Attack();
+  }
+
+  //受伤
+  public void GetHit(int damage)
+  {
+    if (isDead) return;
+
+    CurHp -= damage;
+    if (CurHp <= 0)
+    {
+      CurHp = 0;
+      isDead = true;
+
+      Invoke("GameOver", 2f); // 2秒后游戏结束
+    }
+
+    Game.uIManager.GetUI<FightUI>("FightUI").UpdateHp(CurHp, MaxHp);
+  }
+
+  private void GameOver()
+  {
+    //显示失败界面
+    Game.uIManager.ShowUI<LossUI>("LossUI");
+  }
+
   public float ClamAngle(float val, float min, float max)
   {
     if (val > 360)
@@ -115,6 +221,29 @@ public class PlayerController : MonoBehaviour
     {
       //设置头部的位置
       ani.SetBoneLocalRotation(HumanBodyBones.Chest, Quaternion.Euler(angle_X, 0, 0));
+    }
+  }
+
+  //会在Photon的序列化时调用 用来同步数据
+  public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+  {
+    if (stream.IsWriting)
+    {
+      //发送数据
+      stream.SendNext(H);
+      stream.SendNext(V);
+      stream.SendNext(angle_X);
+      stream.SendNext(transform.position);
+      stream.SendNext(transform.rotation);
+    }
+    else
+    {
+      //接收数据
+      H = (float)stream.ReceiveNext();
+      V = (float)stream.ReceiveNext();
+      angle_X = (float)stream.ReceiveNext();
+      currentPos = (Vector3)stream.ReceiveNext();
+      currentRotation = (Quaternion)stream.ReceiveNext();
     }
   }
 }
