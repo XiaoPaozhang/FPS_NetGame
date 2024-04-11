@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Photon.Pun;
 using UnityEngine;
 
 public class Game : MonoBehaviour
@@ -18,6 +19,10 @@ public class Game : MonoBehaviour
       DontDestroyOnLoad(gameObject);
       uIManager = new UIManager();
       uIManager.Init();
+
+      //设置发送 接受消息频率 降低延迟
+      PhotonNetwork.SendRate = 50;
+      PhotonNetwork.SerializationRate = 50;
     }
   }
 

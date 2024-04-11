@@ -20,7 +20,7 @@ public class Gun : MonoBehaviour
   {
     GameObject bulletObj = Instantiate(bulletPrefab);
     bulletObj.transform.position = bulletTf.position;
-    bulletObj.GetComponent<Rigidbody>().AddForce(transform.forward * 100, ForceMode.Impulse);
+    bulletObj.GetComponent<Rigidbody>().AddForce(transform.forward * 500, ForceMode.Impulse);
 
     GameObject casingObj = Instantiate(casingPrefab);
     casingObj.transform.position = casingTF.transform.position;

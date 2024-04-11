@@ -1,18 +1,25 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.UI;
 
 public class LossUI : MonoBehaviour
 {
-  // Start is called before the first frame update
+  public UnityAction onClickCallback;
+
   void Start()
   {
-
+    transform.Find("resetBtn").GetComponent<Button>().onClick.AddListener(OnClickBtn);
   }
 
-  // Update is called once per frame
-  void Update()
+  private void OnClickBtn()
   {
-
+    if (onClickCallback != null)
+    {
+      onClickCallback();
+    }
+    Game.uIManager.CloseUI(gameObject.name);
   }
 }

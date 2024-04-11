@@ -186,22 +186,61 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
   {
     if (isDead) return;
 
+    photonView.RPC("GetHitRPC", RpcTarget.All, damage);
+  }
+
+  [PunRPC]
+  public void GetHitRPC(int damage)
+  {
     CurHp -= damage;
     if (CurHp <= 0)
     {
       CurHp = 0;
       isDead = true;
 
-      Invoke("GameOver", 2f); // 2秒后游戏结束
     }
+    if (photonView.IsMine)
+    {
+      FightUI fightUI = Game.uIManager.GetUI<FightUI>("FightUI");
+      fightUI.UpdateHp(CurHp, MaxHp);
+      fightUI.UpdateBlood();
 
-    Game.uIManager.GetUI<FightUI>("FightUI").UpdateHp(CurHp, MaxHp);
+      if (CurHp == 0)
+      {
+        Invoke("GameOver", 2f); // 2秒后游戏结束
+      }
+    }
   }
 
   private void GameOver()
   {
+    //显示鼠标
+    Cursor.visible = true;
+    Cursor.lockState = CursorLockMode.None;
+
     //显示失败界面
-    Game.uIManager.ShowUI<LossUI>("LossUI");
+    Game.uIManager.ShowUI<LossUI>("LossUI").onClickCallback = OnReset;
+  }
+
+  //复活吧,我的爱人
+  public void OnReset()
+  {
+    Cursor.visible = false;
+    Cursor.lockState = CursorLockMode.Locked;
+
+    photonView.RPC("OnResetRPC", RpcTarget.All);
+  }
+
+  [PunRPC]
+  public void OnResetRPC()
+  {
+    isDead = false;
+    Debug.Log($"是否死亡: {isDead}");
+    CurHp = MaxHp;
+    if (photonView.IsMine)
+    {
+      Game.uIManager.GetUI<FightUI>("FightUI").UpdateHp(CurHp, MaxHp);
+    }
   }
 
   public float ClamAngle(float val, float min, float max)
@@ -217,12 +256,17 @@ public class PlayerController : MonoBehaviourPun, IPunObservable
 
   private void OnAnimatorIK(int layerIndex)
   {
-    if (ani != null)
+    if (ani != null) // 检查动画组件是否存在
     {
-      //设置头部的位置
-      ani.SetBoneLocalRotation(HumanBodyBones.Chest, Quaternion.Euler(angle_X, 0, 0));
+      // 获取胸部骨骼当前的本地旋转角度
+      Vector3 angle = ani.GetBoneTransform(HumanBodyBones.Chest).localEulerAngles;
+      angle.x = angle_X; // 设置新的X轴旋转角度，angle_X是外部定义的变量
+
+      // 设置胸部骨骼的本地旋转，使用Quaternion.Euler将Vector3的旋转角度转换为四元数
+      ani.SetBoneLocalRotation(HumanBodyBones.Chest, Quaternion.Euler(angle));
     }
   }
+
 
   //会在Photon的序列化时调用 用来同步数据
   public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
